@@ -1,0 +1,20 @@
+{
+  "name": "patchwork-loadtest",
+  "version": "1.0.0",
+  "description": "Standalone load-testing application for Patchwork async job API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/validation.test.js test/statistics.test.js test/webhook.test.js test/integration.test.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1"
+  },
+  "license": "MIT"
+}

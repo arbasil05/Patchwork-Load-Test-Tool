@@ -1,0 +1,2 @@
+{"event":"submission_started","run_id":"737279cd-8190-48d4-a7fa-ce9ba4474246","submission_id":"d697db42-2d1c-46ba-bb1a-b4a037adcb2f","idempotency_key":"d697db42-2d1c-46ba-bb1a-b4a037adcb2f","t_submit_ms":1792314060649}
+{"event":"submission_response","run_id":"737279cd-8190-48d4-a7fa-ce9ba4474246","submission_id":"d697db42-2d1c-46ba-bb1a-b4a037adcb2f","post_http_status":0,"post_ms":1}

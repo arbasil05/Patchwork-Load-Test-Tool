@@ -1,0 +1,32 @@
+{
+  "image_tag": "patchwork-django:latest",
+  "base_ref": "main",
+  "files": [
+    {
+      "filename": "settings.py",
+      "content": "SECRET_KEY = 'test-secret-key'\nDEBUG = True\nALLOWED_HOSTS = ['*']\nROOT_URLCONF = 'urls'\nINSTALLED_APPS = []\nMIDDLEWARE = []\nDEFAULT_CHARSET = 'utf-8'\n"
+    },
+    {
+      "filename": "views.py",
+      "content": "from django.http import JsonResponse\n\nPRODUCTS = [\n    {'id': 1, 'name': 'Keyboard', 'category': 'electronics', 'price': 1200},\n    {'id': 2, 'name': 'Mouse', 'category': 'electronics', 'price': 500},\n    {'id': 3, 'name': 'Notebook', 'category': 'stationery', 'price': 80},\n]\n\ndef product_list(request):\n    category = request.GET.get('category')\n    products = PRODUCTS if not category else [p for p in PRODUCTS if p['category'] == category]\n    return JsonResponse({'products': products})\n\ndef product_detail(request, product_id):\n    for product in PRODUCTS:\n        if product['id'] == product_id:\n            return JsonResponse(product)\n    return JsonResponse({'error': 'Product not found'}, status=404)\n"
+    },
+    {
+      "filename": "urls.py",
+      "content": "from django.urls import path\nfrom views import product_list, product_detail\n\nurlpatterns = [\n    path('products/', product_list),\n    path('products/<int:product_id>/', product_detail),\n]\n"
+    },
+    {
+      "filename": "test_views.py",
+      "content": "import os\nos.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')\nimport django\ndjango.setup()\nfrom django.test import Client\n\nclient = Client()\n\ndef test_list_all_products():\n    response = client.get('/products/')\n    assert response.status_code == 200\n    assert len(response.json()['products']) == 3\n\ndef test_filter_products_by_category():\n    response = client.get('/products/?category=electronics')\n    products = response.json()['products']\n    assert len(products) == 2\n    assert all(p['category'] == 'electronics' for p in products)\n\ndef test_get_product_by_id():\n    response = client.get('/products/1/')\n    assert response.status_code == 200\n    assert response.json()['name'] == 'Keyboard'\n\ndef test_unknown_product_returns_404():\n    response = client.get('/products/999/')\n    assert response.status_code == 404\n    assert response.json()['error'] == 'Product not found'\n\ndef test_unknown_category_returns_empty_list():\n    response = client.get('/products/?category=unknown')\n    assert response.status_code == 200\n    assert response.json()['products'] == []\n"
+    }
+  ],
+  "test_command": "pytest -q",
+  "dependencies": [],
+  "limits": {
+    "timeout_seconds": 10,
+    "memory_mb": 256,
+    "pids_limit": 256
+  },
+  "metadata": {
+    "test_case": "django_product_catalog_api"
+  }
+}

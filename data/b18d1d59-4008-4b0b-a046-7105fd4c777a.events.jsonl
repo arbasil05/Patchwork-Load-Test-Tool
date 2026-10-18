@@ -1,0 +1,10 @@
+{"event":"submission_started","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"cc8bb935-2023-4e78-92d5-653e58a91e0a","idempotency_key":"cc8bb935-2023-4e78-92d5-653e58a91e0a","t_submit_ms":1792315889554}
+{"event":"submission_started","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"5dfe5bd3-6acd-4d12-b3a3-b2a37af01092","idempotency_key":"5dfe5bd3-6acd-4d12-b3a3-b2a37af01092","t_submit_ms":1792315889554}
+{"event":"submission_started","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"8cf7c2eb-21e0-4048-8ce2-082c7df8b478","idempotency_key":"8cf7c2eb-21e0-4048-8ce2-082c7df8b478","t_submit_ms":1792315889555}
+{"event":"submission_started","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"eb20025a-2662-4140-b938-1ff443090dc7","idempotency_key":"eb20025a-2662-4140-b938-1ff443090dc7","t_submit_ms":1792315889555}
+{"event":"submission_started","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"ad731e65-338a-4000-8a57-85a185b7024e","idempotency_key":"ad731e65-338a-4000-8a57-85a185b7024e","t_submit_ms":1792315889556}
+{"event":"submission_response","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"cc8bb935-2023-4e78-92d5-653e58a91e0a","post_http_status":202,"post_ms":72}
+{"event":"submission_response","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"8cf7c2eb-21e0-4048-8ce2-082c7df8b478","post_http_status":202,"post_ms":80}
+{"event":"submission_response","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"5dfe5bd3-6acd-4d12-b3a3-b2a37af01092","post_http_status":202,"post_ms":80}
+{"event":"submission_response","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"eb20025a-2662-4140-b938-1ff443090dc7","post_http_status":202,"post_ms":87}
+{"event":"submission_response","run_id":"b18d1d59-4008-4b0b-a046-7105fd4c777a","submission_id":"ad731e65-338a-4000-8a57-85a185b7024e","post_http_status":202,"post_ms":88}

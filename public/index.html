@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patchwork Load Tester</title>
+  <meta name="description" content="Measure how long Patchwork takes to complete your requests — run many at once and see completion times in milliseconds." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Patchwork Load Tester</span>
+      </div>
+      <div class="header-status" id="healthStatus">
+        <span class="status-dot"></span>
+        <span class="status-label">Checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ── Left panel: config form ─────────────────────────────────────── -->
+    <section class="panel panel-config" id="configPanel">
+      <h1 class="panel-title">Start a Load Test</h1>
+
+      <form id="runForm" autocomplete="off">
+
+        <div class="field-group">
+          <label for="targetUrl">API URL</label>
+          <input type="url" id="targetUrl" name="targetUrl" required
+                 placeholder="http://127.0.0.1:8000/v1/execute"
+                 value="http://127.0.0.1:8000/v1/execute" />
+        </div>
+
+        <div class="field-group">
+          <label for="payloadEditor">Request JSON</label>
+          <textarea id="payloadEditor" name="payloadEditor" rows="10" spellcheck="false"
+                    placeholder='{"key": "value"}'>{
+  "idempotency_key": "loadtest-001",
+  "image_tag": "patchwork-django",
+  "base_ref": "main",
+  "files": []
+}</textarea>
+          <div class="field-error" id="payloadError"></div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="concurrency">Number of concurrent requests</label>
+            <input type="number" id="concurrency" name="concurrency" min="1" max="500"
+                   value="10" required />
+          </div>
+          <div class="field-group">
+            <label for="callbackBaseUrl">Callback URL</label>
+            <input type="url" id="callbackBaseUrl" name="callbackBaseUrl" required
+                   placeholder="http://127.0.0.1:3000"
+                   value="http://127.0.0.1:3000" />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="runLabel">Run name <span class="label-optional">(optional)</span></label>
+            <input type="text" id="runLabel" name="runLabel" maxlength="120"
+                   placeholder="e.g. pool-4-workers" />
+          </div>
+          <div class="field-group">
+            <label for="expectedExitCode">Expected exit code <span class="label-optional">(optional)</span></label>
+            <select id="expectedExitCode" name="expectedExitCode">
+              <option value="">Not specified</option>
+              <option value="0">0 — job passes</option>
+              <option value="1">1 — job fails</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Advanced settings (collapsed by default) -->
+        <details class="advanced-details" id="advancedDetails">
+          <summary class="advanced-summary">Advanced settings</summary>
+          <div class="advanced-body">
+            <div class="field-row">
+              <div class="field-group">
+                <label for="graceSeconds">Grace period (seconds)</label>
+                <input type="number" id="graceSeconds" name="graceSeconds" min="1" max="3600"
+                       value="90" required />
+                <p class="field-hint">How long to wait after the last request for late callbacks.</p>
+              </div>
+              <div class="field-group">
+                <label for="executionMode">Execution mode</label>
+                <input type="text" id="executionMode" name="executionMode" maxlength="64"
+                       placeholder="Leave blank unless required" />
+              </div>
+            </div>
+            <div class="field-group">
+              <p class="field-hint"><strong>Docker users:</strong> If Patchwork runs inside Docker, set Callback URL to your host bridge IP (e.g. <code>http://172.17.0.1:3000</code>) instead of <code>127.0.0.1</code>.</p>
+            </div>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <button type="submit" id="startBtn" class="btn btn-primary btn-full">
+            <span class="btn-icon">▶</span> Start Test
+          </button>
+          <div class="form-error" id="formError"></div>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Right panel: live run + history ──────────────────────────────── -->
+    <section class="panel panel-results">
+
+      <!-- Active run view -->
+      <div id="activeRunSection" class="hidden">
+        <div class="section-header">
+          <h2 class="panel-title-sm">Current Test</h2>
+          <div class="run-state-badge" id="runStateBadge">starting</div>
+        </div>
+        <div class="run-meta">
+          <span id="runIdDisplay" class="run-id-display"></span>
+          <span id="runLabelDisplay" class="run-label-display"></span>
+        </div>
+
+        <!-- Warning banner (shown when submission count mismatches concurrency) -->
+        <div id="warningBanner" class="warning-banner hidden"></div>
+
+        <!-- Live progress counters -->
+        <div class="progress-row">
+          <div class="progress-item">
+            <span class="progress-val" id="mSubmitted">0</span>
+            <span class="progress-lbl">sent</span>
+          </div>
+          <div class="progress-sep">→</div>
+          <div class="progress-item">
+            <span class="progress-val success" id="mWebhooks">0</span>
+            <span class="progress-lbl">completed</span>
+          </div>
+          <div class="progress-sep">/</div>
+          <div class="progress-item">
+            <span class="progress-val" id="mRequested">—</span>
+            <span class="progress-lbl">requested</span>
+          </div>
+          <div class="progress-spacer"></div>
+          <div class="progress-item right">
+            <span class="progress-val info" id="mElapsed">0.0s</span>
+            <span class="progress-lbl">elapsed</span>
+          </div>
+        </div>
+
+        <!-- Failed / missing counts (only shown when >0) -->
+        <div class="side-counts" id="sideCounts">
+          <span id="mFailedWrap" class="side-count hidden">
+            <span class="side-dot danger"></span>
+            <span id="mFailed">0</span> failed
+          </span>
+          <span id="mMissingWrap" class="side-count hidden">
+            <span class="side-dot warning"></span>
+            <span id="mMissing">0</span> no response
+          </span>
+        </div>
+
+        <!-- Completion-time statistics (shown after done) -->
+        <div id="statsSection" class="stats-section hidden">
+          <h3 class="stats-title">Request completion times</h3>
+          <p class="stats-subtitle">How long Patchwork took to finish each request, from submission to callback.</p>
+
+          <div class="stat-cards">
+            <div class="stat-card highlight">
+              <div class="stat-val" id="sMedianE2e">—</div>
+              <div class="stat-lbl">Typical (median)</div>
+              <div class="stat-desc">Half of all requests finished faster than this.</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="sMeanE2e">—</div>
+              <div class="stat-lbl">Average</div>
+              <div class="stat-desc">Sum of all completion times ÷ number of requests.</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="sMinE2e">—</div>
+              <div class="stat-lbl">Fastest</div>
+              <div class="stat-desc">The single quickest request in this run.</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-val" id="sMaxE2e">—</div>
+              <div class="stat-lbl">Slowest</div>
+              <div class="stat-desc">The single longest request in this run.</div>
+            </div>
+            <div class="stat-card accent-blue">
+              <div class="stat-val" id="sP95E2e">—</div>
+              <div class="stat-lbl">P95</div>
+              <div class="stat-desc">95% of requests finished within this time.</div>
+            </div>
+            <div class="stat-card accent-purple">
+              <div class="stat-val" id="sP99E2e">—</div>
+              <div class="stat-lbl">P99</div>
+              <div class="stat-desc">99% of requests finished within this time.</div>
+            </div>
+          </div>
+
+          <!-- Secondary stats -->
+          <details class="secondary-stats-details">
+            <summary class="secondary-stats-summary">More details</summary>
+            <div class="secondary-stats-grid">
+              <div class="secondary-stat">
+                <span class="secondary-lbl">Avg submission time</span>
+                <span class="secondary-val" id="sMeanPost">—</span>
+                <span class="secondary-hint">How long the initial POST took to get accepted. Not the completion time.</span>
+              </div>
+              <div class="secondary-stat">
+                <span class="secondary-lbl">Throughput</span>
+                <span class="secondary-val" id="sThroughput">—</span>
+                <span class="secondary-hint">Completed requests per second over the entire run duration.</span>
+              </div>
+              <div class="secondary-stat">
+                <span class="secondary-lbl">Correct results</span>
+                <span class="secondary-val" id="sCorrect">—</span>
+                <span class="secondary-hint">Requests whose exit code matched the expected value you set.</span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Run history -->
+      <div id="historySection">
+        <div class="section-header">
+          <h2 class="panel-title-sm">Previous Runs</h2>
+          <button class="btn btn-sm" id="refreshHistoryBtn">↻ Refresh</button>
+        </div>
+        <div id="historyTable" class="history-table-wrap">
+          <p class="empty-state">No runs yet. Start a test to see results here.</p>
+        </div>
+      </div>
+
+      <!-- Job detail for a selected run -->
+      <div id="jobDetailSection" class="hidden">
+        <div class="section-header">
+          <h2 class="panel-title-sm" id="jobDetailTitle">Request Details</h2>
+          <div class="export-controls">
+            <button class="btn btn-sm" id="exportCsvBtn">⬇ CSV</button>
+            <button class="btn btn-sm" id="exportJsonBtn">⬇ JSON</button>
+            <button class="btn btn-sm btn-ghost" id="closeJobDetailBtn">✕ Close</button>
+          </div>
+        </div>
+
+        <!-- Stats summary row above the table (for history-selected runs) -->
+        <div id="historyStatsSummary" class="history-stats-summary hidden">
+          <span class="hs-item"><span class="hs-lbl">Median</span><span class="hs-val" id="hsMedian">—</span></span>
+          <span class="hs-sep"></span>
+          <span class="hs-item"><span class="hs-lbl">P95</span><span class="hs-val accent" id="hsP95">—</span></span>
+          <span class="hs-sep"></span>
+          <span class="hs-item"><span class="hs-lbl">P99</span><span class="hs-val purple" id="hsP99">—</span></span>
+          <span class="hs-sep"></span>
+          <span class="hs-item"><span class="hs-lbl">Fastest</span><span class="hs-val" id="hsMin">—</span></span>
+          <span class="hs-sep"></span>
+          <span class="hs-item"><span class="hs-lbl">Slowest</span><span class="hs-val" id="hsMax">—</span></span>
+        </div>
+
+        <div id="jobTable" class="job-table-wrap"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
